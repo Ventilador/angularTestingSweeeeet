@@ -1,0 +1,24 @@
+{
+  "name": "angular-testing-sweeeeet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ventilador/angularTestingSweeeeet.git"
+  },
+  "keywords": [
+    "test",
+    "suite",
+    "angular"
+  ],
+  "author": "Ventilador",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ventilador/angularTestingSweeeeet/issues"
+  },
+  "homepage": "https://github.com/Ventilador/angularTestingSweeeeet#readme"
+}
