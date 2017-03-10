@@ -19,9 +19,10 @@ function createSuite(config) {
     createInjector.$$reset();
     var errorCbs = [];
     // var compilerProvider;
-    // var internalmodule = angular.module(CONSTANTS.MODULE_NAME).config(['$compileProvider', function ($compileProvider_) {
+    var internalmodule = angular.module(CONSTANTS.MODULE_NAME);
+    //  .config(['$compileProvider', function ($compileProvider_) {
     //     compilerProvider = $compileProvider_;
-    // }]);
+    //  }]);
     var internalInjector = createInjector(internalmodule, emitError, angular.injector(config.modules, config.strictAnnotations));
     Object.defineProperties(AngularTestingSweet, {
         '$injector': {

@@ -10,9 +10,9 @@ module.exports = {
 function supportObject(callable, delegate, prefix) {
     return function (name, constructor) {
         if (prefix) {
-            callable(name, delegate(name + prefix, constructor));
+           return callable(name, delegate(name + prefix, constructor));
         } else {
-            callable(name, delegate(name, constructor));
+           return  callable(name, delegate(name, constructor));
         }
     };
 }
@@ -28,7 +28,7 @@ function hasMethods(source) {
     return true;
 }
 function assign(destination) {
-    for (var i = 0, source = arguments[0]; i < arguments.length; arguments[++i]) {
+    for (var i = 1, source = arguments[i]; i < arguments.length; arguments[++i]) {
         if (typeof source !== 'object' || source === null) {
             destination = source;
         } else if (Array.isArray(source)) {
@@ -65,9 +65,9 @@ function base(name, factoryFn) {
         $get: factoryFn
     });
 }
-function factory(name, factoryFn, enforce) {
+function factory(name, factoryFn) {
     return provider(name, {
-        $get: enforce !== false ? enforceReturnValue(name, factoryFn) : factoryFn
+        $get: factoryFn
     });
 }
 function service(name, factoryFn) {

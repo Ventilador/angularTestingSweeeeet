@@ -14,11 +14,11 @@ function suite($injector, onError) {
         filter: supportObject($injector.addLocals, base, 'Filter'),
         controller: supportObject($injector.addLocals, base, 'Controller'),
         diretive: supportObject($injector.addLocals, base, 'Directive'),
-        constant: supportObject(),
-        bindFrom: supportObject(),
         done: create,
         createController: createController
     };
     var parent;
     return suiteInstance;
+    function create() { }
+    function createController() { }
 }

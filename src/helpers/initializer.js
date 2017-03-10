@@ -15,12 +15,13 @@ function init() {
         throw 'Please initialize ' + CONSTANTS.MODULE_NAME + ' only once, sorry :(';
     }
     isInit = true;
-    angular.module(CONSTANTS.MODULE_NAME, ['ng']);
-    angular.module = createAngularObject();
+    angular.module = createAngularObject(angular.module);
 }
 
-function createAngularObject() {
+
+function createAngularObject(originalModule) {
     var modules = {};
+    modules[CONSTANTS.MODULE_NAME] = originalModule(CONSTANTS.MODULE_NAME, ['ng']);
     return function (name, requires) {
         if (requires) {
             if (name === CONSTANTS.MODULE_NAME) {
@@ -28,41 +29,51 @@ function createAngularObject() {
             }
             modules[name] = newModule(requires, name);
         }
+        if (!modules[name]) {
+            throw 'Module "' + name + '" not found';
+        }
         return modules[name];
     };
 }
+var internalProto = {
+    $$INTERNAL: true
+};
 
 function newModule(requires, name) {
     var configArray = [];
     var runArray = [];
     var all = {};
-    var instance = {
-        directive: supportObject(setAll, base, 'Directive'),
-        controller: supportObject(setAll, base),
-        service: supportObject(setAll, service),
-        info: supportObject(setAll, base),
-        provider: supportObject(setAll, provider),
-        factory: supportObject(setAll, factory),
-        value: supportObject(angular.noop, angular.noop),
-        constant: supportObject(angular.noop, angular.noop),
-        filter: supportObject(setAll, base, 'Filter'),
-        decorator: supportObject(angular.noop, angular.noop),
-        animation: supportObject(angular.noop, angular.noop),
-        component: supportObject(setAll, base, 'Component'),
-        config: supportObject(angular.noop, angular.noop),
-        run: supportObject(angular.noop, angular.noop),
-        configMock: supportObject(angular.noop, config),
-        runMock: supportObject(angular.noop, run),
-        requires: requires,
-        name: name,
-        $$all: all,
-        transverseAll: transverseAll,
-        _moduleConfig: configArray,
-        _moduleRun: runArray
-    };
+    var instance = Object.create(internalProto);
+    instance.directive = supportObject(setAll, base, 'Directive');
+    instance.controller = supportObject(setAll, base);
+    instance.service = supportObject(setAll, service);
+    instance.info = supportObject(setAll, base);
+    instance.provider = supportObject(setAll, provider);
+    instance.factory = supportObject(setAll, factory);
+    instance.value = supportObject(returnInstance, angular.noop);
+    instance.constant = supportObject(returnInstance, angular.noop);
+    instance.filter = supportObject(setAll, base, 'Filter');
+    instance.decorator = supportObject(returnInstance, angular.noop);
+    instance.animation = supportObject(returnInstance, angular.noop);
+    instance.component = supportObject(setAll, base, 'Component');
+    instance.config = supportObject(returnInstance, angular.noop);
+    instance.run = supportObject(returnInstance, angular.noop);
+    instance.configMock = supportObject(returnInstance, config);
+    instance.runMock = supportObject(returnInstance, run);
+    instance.requires = requires;
+    instance.name = name;
+    instance.$$all = all;
+    instance.transverseAll = transverseAll;
+    instance._moduleConfig = configArray;
+    instance._moduleRun = runArray;
     return instance;
     function setAll(name, value) {
         all[name] = value;
+        return instance;
+    }
+
+    function returnInstance() {
+        return instance;
     }
 
     function transverseAll(array, only) {

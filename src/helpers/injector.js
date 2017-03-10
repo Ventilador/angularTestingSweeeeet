@@ -34,6 +34,7 @@ createInjector.get = function () {
     }
     return uniqueInjectorInstance;
 };
+
 function createInjector(angularModule_, emitError_/*or required modules*/, force/*or original injector*/) {
     cache = {};
     providers = {};
@@ -53,21 +54,25 @@ function createInjector(angularModule_, emitError_/*or required modules*/, force
         instantiate: initDelegate(internalInstantiate, 'instantiate'),
         invoke: initDelegate(internalInvoke, 'invoke')
     });
-    if (Array.isArray(emitError_) || force) {
-        moduleConfig = angularModule.transverseAll(emitError_, force);
-        $$all = moduleConfig.$$all;
-    } else {
-        moduleConfig = {
-            run: angularModule._moduleRun.slice(),
-            config: angularModule_._moduleConfig.slice()
+    if (angularModule.$$INTERNAL) {
+        if (Array.isArray(emitError_) || force === true) {
+            moduleConfig = angularModule.transverseAll(emitError_, force);
+            $$all = moduleConfig.$$all;
+        } else {
+            moduleConfig = {
+                run: angularModule._moduleRun.slice(),
+                config: angularModule_._moduleConfig.slice()
+            };
+            $$all = angularModule.$$all;
+        }
+        has = Function.prototype.call.bind(Object.prototype.hasOwnProperty, $$all);
+        locals = {
+            $injector: uniqueInjectorInstance
         };
-        $$all = angularModule.$$all;
     }
-    has = Function.prototype.call.bind(Object.prototype.hasOwnProperty, $$all);
-    locals = {
-        $injector: uniqueInjectorInstance
-    };
-    $rootScope.$$reset();
+    if ($rootScope) {
+        $rootScope.$$reset();
+    }
     return uniqueInjectorInstance;
 }
 
