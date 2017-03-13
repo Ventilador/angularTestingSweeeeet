@@ -5,6 +5,6 @@ Object.defineProperties(CONSTANST, {
             return 'angular-testing-sweet';
         }
     }
-})
+});
 module.exports = CONSTANST;
 

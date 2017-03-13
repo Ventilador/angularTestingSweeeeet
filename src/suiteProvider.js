@@ -1,29 +1,30 @@
 var suiteCreator = require('./helpers/suiteInstance');
 var createInjector = require('./helpers/injector');
 var assign = require('./helpers/utils').assign;
+var forEachKey = require('./helpers/utils').forEachKey;
 var requiresKey = '$$$requires';
 var CONSTANTS = require('./helpers/constants.js');
 var DEFAULTS = {
     modules: [CONSTANTS.MODULE_NAME],
     strictAnnotations: true
 };
-var warn = false;
-module.exports = createSuite;
+var areEqual = require('./helpers/utils').areEqual;
+var internalmodule = angular.module(CONSTANTS.MODULE_NAME);
+var oldConfig;
+var instance;
 function createSuite(config) {
-    if (warn) {
-        console.log('You don\'t need to create multiples ' + CONSTANTS.MODULE_NAME + ' providers :)');
-    } else {
-        warn = true;
-    }
-    config = assign(config, DEFAULTS);
-    createInjector.$$reset();
+    config = assign(oldConfig = config, DEFAULTS);
     var errorCbs = [];
-    // var compilerProvider;
-    var internalmodule = angular.module(CONSTANTS.MODULE_NAME);
-    //  .config(['$compileProvider', function ($compileProvider_) {
-    //     compilerProvider = $compileProvider_;
-    //  }]);
-    var internalInjector = createInjector(internalmodule, emitError, angular.injector(config.modules, config.strictAnnotations));
+    var injector = angular.bootstrap('<div/>', config.modules, { strictDi: config.strictAnnotations });
+    var copiedInjector = {};
+    forEachKey(injector, function (key, value) {
+        if (typeof value === 'function') {
+            copiedInjector[key] = value.bind(injector);
+        } else {
+            copiedInjector[key] = value;
+        }
+    });
+    var internalInjector;
     Object.defineProperties(AngularTestingSweet, {
         '$injector': {
             get: function () {
@@ -42,9 +43,9 @@ function createSuite(config) {
         }
     });
     return AngularTestingSweet;
-    function AngularTestingSweet(moduleName, actualDependencies) {
+    function AngularTestingSweet(moduleName, actualDependencies, force) {
         return suiteCreator(
-            createInjector(angular.module(moduleName), actualDependencies),
+            (internalInjector = createInjector(angular.module(moduleName), actualDependencies, force, injector, emitError, copiedInjector)),
             emitError
         );
     }
@@ -72,4 +73,5 @@ function createSuite(config) {
     }
 
 }
+module.exports = createSuite;
 

@@ -1,4 +1,3 @@
-require('angular');
 var init = require('./helpers/initializer');
 module.exports = (function (context) {
     init();
