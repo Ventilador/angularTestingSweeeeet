@@ -47,8 +47,7 @@ function suite($injector, onError) {
         if (callback) {
             callback(factoryInstance);
         }
-        $injector.addLocals(name, factoryInstance);
-        return suiteInstance;
+        return addLocals(name, factoryInstance);
     }
 
     function ensureResult(factory, callback) {
@@ -68,7 +67,7 @@ function suite($injector, onError) {
         if (typeof name === 'object' && !factory) {
             forEachKey(name, directives);
         } else {
-            toClean.push(compiledDirective[name] = {
+            toClean.push({
                 name: name,
                 fn: $injector.$$overrideCache(name, saveDirectiveInstance(createDirective(factory, name)))
             });

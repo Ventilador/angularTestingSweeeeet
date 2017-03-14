@@ -16,8 +16,8 @@ module.exports = function (expression) {
         }
     }
 };
+module.exports.run = run;
 run.$inject = ['$interpolate'];
 function run($interpolate_) {
     $interpolate = $interpolate_;
 }
-angular.module(require('./../constants').MODULE_NAME).run(run);

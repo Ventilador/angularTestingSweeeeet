@@ -1,6 +1,6 @@
+var CONSTANTS = require('./constants');
 var isInit;
 var utils = require('./utils'),
-    CONSTANTS = require('./constants'),
     base = utils.base,
     factory = utils.factory,
     provider = utils.provider,
@@ -10,46 +10,9 @@ var utils = require('./utils'),
     getKey = utils.getKey,
     valueFn = utils.valueFn,
     assertRootScopeClean = utils.assertRootScopeClean;
-
+var decorateDirective = require('./compileProvider').decorateDirective;
 var diretivesPushed = {};
 var intercepted;
-var why = angular.dummyModule = function (name, factory) {
-    if (!diretivesPushed) {
-        diretivesPushed[name] = true;
-        $$module.directive(name, factory);
-    }
-};
-var $$module = angular.module(CONSTANTS.MODULE_NAME, ['ng'])
-    .decorator('$controller', ['$delegate', '$injector', function ($delegate, $injector) {
-        var original$controller = $delegate;
-        var intercepted = [];
-        copyProperties($controller, original$controller);
-        $controller.$$reset = $$reset;
-        $controller.$$intercepted = $$intercepted;
-        return $controller;
-        function $controller(expression, locals, later, ident) {
-            var tracker = getKey(expression);
-            if (typeof expression === 'string') {
-                expression = $injector.get(expression + 'Controller');
-            }
-            var result = original$controller(expression, locals, later, ident);
-            intercepted.push(Object.assign({
-                name: tracker,
-                instance: result.instance
-            }, locals));
-            return result;
-        }
-        function $$intercepted() {
-            return intercepted;
-        }
-        function $$reset() {
-            intercepted = [];
-            return $controller;
-        }
-    }]).decorator('$rootScope', ['$delegate', function (root) {
-        root.$$reset = assertRootScopeClean;
-        return root;
-    }]);
 
 
 
@@ -89,12 +52,12 @@ function newModule(requires, name) {
     var all = {};
     var instance = Object.create(internalProto);
     instance.directive = supportObject(setAll, function directive(name, factory) {
-        $$module.directive(name.slice(0, -('Directive'.length)), factory).decorator(name, ['$delegate', function () {
-            return [];
-        }]);
+        angular.dummyModule(name.slice(0, -('Directive'.length)), factory);
         return provider(undefined, {
-            $get: ['$injector', function ($injector) {
-                return [$injector.instantiate(factory)];
+            $get: [function () {
+                return [decorateDirective({
+                    directive: factory
+                }, name).directive];
             }]
         });
     }, 'Directive');
@@ -133,6 +96,11 @@ function newModule(requires, name) {
         return instance;
     }
 
+    function ensureProperties(constructor) {
+        var directive = $injector.invoke(constructor);
+
+    }
+
     function transverseAll(array, only) {
         var toReturn = {
             $$all: {},
@@ -147,7 +115,7 @@ function newModule(requires, name) {
             }
             return toReturn;
         }
-        Object.assign(toReturn, instance.$$all);
+        Object.assign(toReturn.$$all, instance.$$all);
         array = instance.requires.concat(array);
         while (array.length) {
             array = array.concat(merge(array.pop()) || []);
@@ -155,7 +123,7 @@ function newModule(requires, name) {
         return toReturn;
         function merge(key) {
             if ((key = angular.module(key))) {
-                Object.assign(toReturn, key.$$all);
+                Object.assign(toReturn.$$all, key.$$all);
                 toReturn.run = toReturn.run.concat(key._moduleRun);
                 toReturn.config = toReturn.config.concat(key._moduleConfig);
                 return key.requires;

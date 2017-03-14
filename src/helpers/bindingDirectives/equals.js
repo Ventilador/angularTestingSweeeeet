@@ -34,7 +34,7 @@ module.exports = function (expression) {
 };
 
 run.$inject = ['$parse'];
-angular.module(require('./../constants').MODULE_NAME).run(run);
+module.exports.run = run;
 function run($parse_) {
     $parse = $parse_;
 }

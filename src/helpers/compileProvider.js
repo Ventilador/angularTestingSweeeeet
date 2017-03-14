@@ -6,7 +6,8 @@ var utils = require('./utils'),
 module.exports = {
     createDirective: createDirective,
     onModuleRun: run,
-    buildHTML: buildHTML
+    buildHTML: buildHTML,
+    decorateDirective: decorateDirective
 };
 
 var bindingTypes = {
@@ -22,7 +23,7 @@ var compiled;
 var $parse;
 var $injector;
 run.$inject = ['$parse', '$injector'];
-angular.module(MODULE_NAME).run(run);
+module.exports.run = run;
 function run($parse_, $injector_) {
     $parse = $parse_;
     $injector = $injector_;
@@ -52,12 +53,11 @@ function decorateDirective(directiveObj, name) {
         directive.compile = valueFn(directive.link);
     }
     directive.priority = directive.priority || 0;
-    directive.index = index;
+    directive.index = directive.index || 0;
     directive.name = directive.name || name;
     directive.require = getDirectiveRequire(directive);
     directive.restrict = getDirectiveRestrict(directive.restrict, name);
-    directive.$$moduleName = directiveFactory.$$moduleName;
-    directives.push(directive);
+    directive.$$moduleName = 'dummy';
     directive.priority = 0;
     directiveObj.directive = directive;
     directiveObj.name = name;

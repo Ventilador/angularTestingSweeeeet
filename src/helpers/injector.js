@@ -10,20 +10,13 @@ var setKeys = require('./utils').setKeys;
 var CONSTANTS = require('./constants');
 module.exports = createInjector;
 
-createInjector.get = function () {
-    if (!uniqueInjectorInstance) {
-        throw 'Import ' + CONSTANTS.MODULE_NAME + ' module before this';
-    }
-    return uniqueInjectorInstance;
-};
-
 function createInjector(angularModule, requires, force, angularInjector, emitError, originalMethods) {
     var cache = {};
     var overritenCache = {};
     var providers = {};
     var locals = {};
     var $$all = {};
-    var instance = Object.assign(angularInjector, {
+    Object.assign(angularInjector, {
         annotate: originalMethods.annotate,
         addLocals: internalAddLocals,
         $$overideCache: $$overideCache,
@@ -32,8 +25,9 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         instantiate: initDelegate(internalInstantiate, 'instantiate'),
         invoke: initDelegate(internalInvoke, 'invoke')
     });
+    var instance = angularInjector;
     if (Array.isArray(requires) || force === true) {
-        moduleConfig = angularModule.transverseAll(emitError_, force);
+        moduleConfig = angularModule.transverseAll(requires, force);
         $$all = moduleConfig.$$all;
     } else {
         moduleConfig = {
@@ -108,8 +102,10 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             if (providers[provName]) {
                 cache[name] = internalInvoke(providers[provName].$get, providers[provName]);
             }
+        } else if (/Directive$/.test(name)) {
+            return (cache[name] = []);
         } else if (originalMethods.has(name)) {
-            cache[name] = originalMethods.get(name, locals);
+            cache[name] = originalMethods.get(name);
         } else {
             delete cache[name];
             emitError('Not found: ' + name);
