@@ -15,7 +15,8 @@ module.exports = {
     getKey: getKey,
     snake_case: snake_case,
     areEqual: areEqual,
-    createMethod: createMethod
+    createMethod: createMethod,
+    unique: unique
 };
 
 var unique = 0;
@@ -79,6 +80,14 @@ function assign(destination) {
 
 function provider(name, provider_) {
     return typeof provider_ === 'object' ? valueFn(provider_) : provider_;
+}
+
+function unique(array) {
+    var keys = {};
+    for (var i = 0; i < array.length; i++) {
+        keys[array[i]] = true;
+    }
+    return Object.keys(keys);
 }
 
 

@@ -90,22 +90,32 @@ function cleanLater(fn) {
 }
 
 
-function buildHTML(directiveToCompile, name, attrs) {
+function buildHTML(directiveToCompile, name, attrs, parent) {
     var controllerToFectch = directiveToCompile.controller;
-    var bindings = attrs || directiveToCompile.bindToController || directiveToCompile.scope;
+    var bindings = directiveToCompile.bindToController || directiveToCompile.scope || {};
+    if (attrs) {
+        bindings = Object.assign({}, bindings, attrs);
+    }
     var attrsToCreate = [];
     var nameAdded;
     forEachKey(bindings, function (key, value) {
         if (key === name) {
             nameAdded = true;
         }
-        key = snake_case(key);
+        var casedKey = snake_case(key);
         var result = regex.exec(value || '');
         if (result) {
-            value = result[3] || value;
+            value = result[3] || key;
+            switch (result[1]) {
+                case '@':
+                    value = parent[value];
+                    break;
+                default:
+                    break;
+            }
         }
         attrsToCreate.push({
-            attrName: key,
+            attrName: casedKey,
             attrValue: value
         });
     });

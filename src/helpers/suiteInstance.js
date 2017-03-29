@@ -17,12 +17,11 @@ var toClean = [];
 function suite($injector, onError) {
     clean();
     var compiledDirective = {};
-    var bindFrom;
     var suiteInstance = {
         service: support,
         factory: support,
         filter: supportObject(addLocals, base, 'Filter'),
-        bindParent: bindParent,
+        bindFrom: bindFrom,
         diretives: directives,
         removeDirectives: removeDirectives,
         compile: compile
@@ -34,7 +33,7 @@ function suite($injector, onError) {
     function support(name, instance, callback, spyCreator) {
         var factoryInstance;
         if (typeof instance === 'function') {
-            factoryInstance = ensureResult(instance, callback);
+            factoryInstance = ensureResult(instance);
         } else if (Array.isArray(instance)) {
             factoryInstance = {};
             spyCreator = spyCreator || $injector.has('spyService') ? $injector.get('spyService') : createMethod;
@@ -50,7 +49,7 @@ function suite($injector, onError) {
         return addLocals(name, factoryInstance);
     }
 
-    function ensureResult(factory, callback) {
+    function ensureResult(factory) {
         var internalInstance = Object.create(factory.prototype || null);
         var result = $injector.invoke(factory, internalInstance);
         if (result !== internalInstance && (typeof result === 'function' || typeof result === 'object')) {
@@ -89,7 +88,7 @@ function suite($injector, onError) {
 
 
     function cleanDirective(name) {
-        for (var i = toClean.length - 1, value = toClean[i]; i; value = toClean[--i]) {
+        for (var i = toClean.length - 1, value = toClean[i]; i > -1; value = toClean[--i]) {
             if (value.name === name) {
                 value.fn();
                 toClean.splice(i, 1);
@@ -97,8 +96,9 @@ function suite($injector, onError) {
         }
     }
 
-    function bindParent(newParent) {
-        bindFrom = newParent;
+    function bindFrom(newParent) {
+        parent = newParent;
+        return suiteInstance;
     }
 
 
@@ -124,14 +124,16 @@ function suite($injector, onError) {
         var childScope;
         if (typeof directive === 'string') {
             if (!$injector.has(directive + 'Directive')) {
-                throw 'Directive "' + directive + '" not found';
+                onError('Directive "' + directive + '" not found', compile, arguments);
+                return null;
             }
-            var info = buildHTML($injector.get(directive + 'Directive')[0], directive, attrs);
+            var info = buildHTML($injector.get(directive + 'Directive')[0], directive, attrs, parentScope);
             controllerToFectch = info.controller;
             toCompile = info.html;
         }
         compiled = $compile(toCompile)(parentScope);
         return {
+            compiledFrom: valueFn(toCompile),
             getParentScope: valueFn(parentScope),
             getController: propertyGetter('instance'),
             getDirective: getDirective,
@@ -171,7 +173,7 @@ function suite($injector, onError) {
                     return value;
                 }
             }
-            throw 'Controller "' + name + '" not found';
+            onError('Controller "' + name + '" not found', findByName, arguments);
         }
 
         function getDirective(name) {

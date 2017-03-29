@@ -3,16 +3,17 @@ var createInjector = require('./helpers/injector');
 var assign = require('./helpers/utils').assign;
 var forEachKey = require('./helpers/utils').forEachKey;
 var requiresKey = '$$$requires';
-var CONSTANTS = require('./helpers/constants.js');
+var MODULE_NAME = require('./helpers/constants.js').MODULE_NAME;
 var DEFAULTS = {
-    modules: [CONSTANTS.MODULE_NAME],
+    modules: [MODULE_NAME],
     strictAnnotations: true
 };
 var areEqual = require('./helpers/utils').areEqual;
 var oldConfig;
 var instance;
-function createSuiteProvider(injector) {
+function createSuiteProvider(injector, config) {
     var copiedInjector = {};
+    config = assign(config, DEFAULTS);
     forEachKey(injector, function (key, value) {
         if (typeof value === 'function') {
             copiedInjector[key] = value.bind(injector);
@@ -21,9 +22,9 @@ function createSuiteProvider(injector) {
         }
     });
     return createSuite;
-    function createSuite(config) {
-        config = assign(oldConfig = config, DEFAULTS);
+    function createSuite(instanceModules) {
         var errorCbs = [];
+        var root = injector.get('$rootScope');
         Object.defineProperties(AngularTestingSweet, {
             '$injector': {
                 get: function () {
@@ -32,7 +33,7 @@ function createSuiteProvider(injector) {
             },
             '$rootScope': {
                 get: function () {
-                    return injector.get('$rootScope');
+                    return root;
                 }
             },
             'onError': {
@@ -43,6 +44,9 @@ function createSuiteProvider(injector) {
         });
         return AngularTestingSweet;
         function AngularTestingSweet(moduleName, actualDependencies, force) {
+            if (instanceModules && Array.isArray(instanceModules)) {
+                instanceModules.forEach(pushTo(actualDependencies));
+            }
             return suiteCreator(
                 (internalInjector = createInjector(angular.module(moduleName), actualDependencies, force, injector, emitError, copiedInjector)),
                 emitError
@@ -59,19 +63,38 @@ function createSuiteProvider(injector) {
             };
         }
 
-        function emitError(message) {
+        function emitError(message, fn, args) {
             if (errorCbs.length) {
                 for (var ii = 0; ii < errorCbs.length; ii++) {
                     try {
-                        errorCbs[ii](message);
+                        errorCbs[ii](message, fn, args);
                     } catch (error) { }
                 }
             } else {
-                console.error(message);
+                console.error(message + (fn ? ' at ' + fn.name : ''));
             }
         }
 
     }
+}
+
+var removeModules = {
+    ng: true,
+    ngLocale: true
+};
+removeModules[MODULE_NAME] = true;
+
+function pushTo(array) {
+    for (var i = array.length - 1; i > -1; i--) {
+        if (removeModules[array[i]]) {
+            array.splice(i, 1);
+        }
+    }
+    return function (name) {
+        if (!removeModules[name] && angular.module.has(name) && array.indexOf(name) === -1) {
+            array.push(name);
+        }
+    };
 }
 
 module.exports = createSuiteProvider;

@@ -9,6 +9,7 @@ var utils = require('./utils'),
     supportObject = utils.supportObject,
     getKey = utils.getKey,
     valueFn = utils.valueFn,
+    unique = utils.unique,
     assertRootScopeClean = utils.assertRootScopeClean;
 var decorateDirective = require('./compileProvider').decorateDirective;
 var diretivesPushed = {};
@@ -29,30 +30,42 @@ function init() {
 function createAngularObject(originalModule) {
     var modules = {};
     modules[CONSTANTS.MODULE_NAME] = originalModule;
-    return function (name, requires) {
+    newModule.has = function (name) {
+        return name in modules;
+    };
+    return newModule;
+    function newModule(name, requires) {
         if (requires) {
             if (name === CONSTANTS.MODULE_NAME) {
                 throw 'Please don\'t override ' + CONSTANTS.MODULE_NAME + ' module';
+            } else if (name === 'hasOwnProperty') {
+                throw 'Please don\'t override hasOwnProperty method';
             }
-            modules[name] = newModule(requires, name);
+            modules[name] = newModuleInternal(requires, name);
         }
         if (!modules[name]) {
             throw 'Module "' + name + '" not found';
         }
         return modules[name];
-    };
+    }
+    function has(name) {
+        return modules.hasOwnProperty(name);
+    }
 }
 var internalProto = {
     $$INTERNAL: true
 };
+function returnNoop() {
+    return angular.noop;
+}
 
-function newModule(requires, name) {
+function newModuleInternal(requires, name) {
     var configArray = [];
     var runArray = [];
     var all = {};
     var instance = Object.create(internalProto);
     instance.directive = supportObject(setAll, function directive(name, factory) {
-        angular.dummyModule(name.slice(0, -('Directive'.length)), factory);
+        angular.dummyModule(name.slice(0, -('Directive'.length)), returnNoop);
         return provider(undefined, {
             $get: [function () {
                 return [decorateDirective({
@@ -96,38 +109,34 @@ function newModule(requires, name) {
         return instance;
     }
 
-    function ensureProperties(constructor) {
-        var directive = $injector.invoke(constructor);
-
-    }
-
-    function transverseAll(array, only) {
+    function transverseAll(array, force) {
         var toReturn = {
-            $$all: {},
+            $$all: Object.assign({}, instance.$$all),
             run: [],
             config: []
         };
-        var key;
-        if (only) {
-            array = array || instance.requires;
+        var visited = {};
+        array = unique(instance.requires.concat(array || []));
+        if (!force) {
             while (array.length) {
                 merge(array.pop());
             }
             return toReturn;
         }
-        Object.assign(toReturn.$$all, instance.$$all);
-        array = instance.requires.concat(array);
         while (array.length) {
-            array = array.concat(merge(array.pop()) || []);
+            array = unique(array.concat(merge(array.pop())));
         }
         return toReturn;
         function merge(key) {
-            if ((key = angular.module(key))) {
+            if (!visited[key] && angular.module.has(key)) {
+                key = angular.module(key);
+                visited[key] = true;
                 Object.assign(toReturn.$$all, key.$$all);
                 toReturn.run = toReturn.run.concat(key._moduleRun);
                 toReturn.config = toReturn.config.concat(key._moduleConfig);
                 return key.requires;
             }
+            return [];
         }
     }
 

@@ -69,7 +69,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
 
 
     function internalAddLocals(name, constructor) {
-        assertNotEquals(name, 'hasOwnProperty', '$injector', '$scope', '$rootScope', '$q', '$timeout', '$interval', '$parse', '$compile', '$controller');
+        assertNotEquals(emitError, name, 'hasOwnProperty', '$injector', '$scope', '$rootScope', '$q', '$timeout', '$interval', '$parse', '$compile', '$controller');
         var toDelete = [name];
         var key, length = 1;
         while (length--) {
@@ -84,13 +84,13 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
     }
 
     function internalGet(name) {
-        if (cache.hasOwnProperty(name)) {
+        if (hasProp(cache, name)) {
             if (cache[name] === INSTANTIATING) {
-                emitError('Circular dependency');
+                emitError('Circular dependency', internalGet, [name]);
             }
             return cache[name];
         } else if (hasProp(locals, name)) {
-            return locals[name];
+            return (cache[name] = locals[name]);
         }
         var provName = name + providerPrefix;
         cache[name] = INSTANTIATING;
@@ -102,13 +102,13 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             if (providers[provName]) {
                 cache[name] = internalInvoke(providers[provName].$get, providers[provName]);
             }
-        } else if (/Directive$/.test(name)) {
+        } else if (/^[^n][^g].+Directive$/.test(name)) {
             return (cache[name] = []);
         } else if (originalMethods.has(name)) {
             cache[name] = originalMethods.get(name);
         } else {
             delete cache[name];
-            emitError('Not found: ' + name);
+            emitError('Not found: ' + name, internalGet, [name]);
         }
         return cache[name];
 
@@ -117,7 +117,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
     function instanciateProvider(name) {
         if (hasProp(providers, name)) {
             if (providers[name] === INSTANTIATING) {
-                emitError('Circular dependency in ' + name);
+                emitError('Circular dependency in ' + name, instanciateProvider, [name]);
                 return;
             }
             return providers[name];
@@ -129,7 +129,8 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         } else if (hasProp($$all, name)) {
             provider = $$all[name];
         } else {
-            throw 'Provider not registered';
+            emitError('Provider not registered', instanciateProvider, [name]);
+            return null;
         }
         var instance = Object.create((Array.isArray(provider) ? provider[provider.length - 1] : provider).prototype || null);
         var requires = [];
@@ -218,11 +219,19 @@ function stringifyFn(fn) {
     return Function.prototype.toString.call(fn);
 }
 
-function assertNotEquals(toCheck) {
-    for (var i = 1, key = arguments[i]; i < arguments.length; key = arguments[++i]) {
+function assertNotEquals(emitError, toCheck) {
+    var error;
+    var array = [];
+    for (var i = 2, key = arguments[i]; i < arguments.length; key = arguments[++i]) {
         if (toCheck === key) {
-            throw 'Cannot set ' + toCheck + ' as locals for $injector';
+            array.push(toCheck);
+            emitError('Cannot set ' + toCheck + ' as locals for $injector');
+            error = true;
         }
+    }
+    if (error) {
+        emitError('Throwing');
+        throw 'Invalid property(s): ' + array.join(', ') + '.';
     }
 }
 
