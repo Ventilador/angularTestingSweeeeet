@@ -7,7 +7,7 @@ module.exports = {
     createDirective: createDirective,
     onModuleRun: run,
     buildHTML: buildHTML,
-    decorateDirective: decorateDirective
+    decorateDirective: decorateDirective,
 };
 
 var bindingTypes = {
@@ -136,5 +136,9 @@ function buildHTML(directiveToCompile, name, attrs, parent) {
             }
         }).join(' '), ' ></' + name + '>'].join('')
     };
+}
+
+function decorateNgModelController() {
+
 }
 

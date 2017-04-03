@@ -159,7 +159,7 @@ function getKey(expression) {
     if (typeof expression.$$internalId !== 'number') {
         expression.$$internalId = next();
     }
-    return controller.$$internalId;
+    return expression.$$internalId;
 }
 
 var SNAKE_CASE_REGEXP = /[A-Z]/g;

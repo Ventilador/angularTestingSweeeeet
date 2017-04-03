@@ -18,12 +18,14 @@ var intercepted;
 
 
 module.exports = init;
+
 function init() {
     if (isInit) {
         throw 'Please initialize ' + CONSTANTS.MODULE_NAME + ' only once, sorry :(';
     }
     isInit = true;
     angular.module = createAngularObject(angular.module(CONSTANTS.MODULE_NAME));
+    extendJquery(angular.element);
 }
 
 
@@ -146,5 +148,22 @@ function newModuleInternal(requires, name) {
     }
     function run(getter) {
         runArray.push(getter);
+    }
+}
+
+function extendJquery($) {
+    $.fn.model = $model;
+}
+
+
+function $model() {
+    if (arguments.length) {
+        return this.trigger('ngModel', arguments);
+    } else {
+        var temp;
+        this.trigger('ngModel', function $$getModel(value) {
+            temp = value;
+        });
+        return temp;
     }
 }
