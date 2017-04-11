@@ -16,37 +16,52 @@ var onError = {
 };
 
 function $$makeDispatchAsync(that) {
-    var array = [];
     var $$scope = that.$$scope;
     that.$viewChangeListeners.push(onChange);
-    var queued;
-
+    var changeQueue = [];
+    var evalQueue = [];
+    var queued = false;
     return registerChange;
     function onChange() {
-        if (queued) {
-            return;
+        if (evalQueue.length + changeQueue.length) {
+            $$scope.$$postDigest(arguments[1] || flushChange);
         }
-        queued = true;
-        $$scope.$$postDigest(flush);
     }
-    function flush() {
+    function flushEval() {
         try {
-            while (array.length) {
-                array.pop()(that.$modelValue);
+            while (evalQueue.length) {
+                evalQueue.pop()(that.$modelValue);
             }
         } catch (err) {
             console.debug(err);
-        } finally {
-            queued = false;
         }
     }
-    function registerChange(fn, evalAsync) {
-        if (typeof fn === 'function') {
-            array.push(fn);
-        } else {
-            console.error(onError[!!evalAsync]);
+    function flushChange() {
+        try {
+            while (changeQueue.length) {
+                changeQueue.pop()(that.$modelValue);
+            }
+        } catch (err) {
+            console.debug(err);
         }
-        $$scope.$evalAsync(onChange);
+    }
+    function queueEval(fn, array) {
+        (array || evalQueue).push(fn);
+        if (queued || array) {
+            return;
+        }
+        queued = true;
+        $$scope.$evalAsync(onChange, flushEval);
+    }
+
+
+
+    function registerChange(fn) {
+        if (that.$$lastCommittedViewValue !== that.$viewValue) {
+            queueEval(fn, changeQueue);
+        } else {
+            queueEval(fn);
+        }
     }
 }
 
@@ -104,12 +119,11 @@ function loop(array, that, debounce, dispatcher, whenDone) {
 }
 
 function doInterval(config) {
+    config.that.$setViewValue(config.carried += config.array[config.ii]);
+    config.ii++;
     if (config.ii === config.array.length) {
         clearInterval(config.interval);
         config.whenDone();
-    } else {
-        config.that.$setViewValue(config.carried += config.array[config.ii]);
-        config.ii++;
     }
 }
 

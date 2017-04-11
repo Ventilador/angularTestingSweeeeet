@@ -16,8 +16,18 @@ module.exports = {
     snake_case: snake_case,
     areEqual: areEqual,
     createMethod: createMethod,
-    unique: unique
+    unique: unique,
+    assertDefinedNotNull: assertDefinedNotNull
 };
+
+function assertDefinedNotNull(obj) {
+    for (var ii = 1, current = arguments[ii]; ii < arguments.length; current = arguments[++ii]) {
+        if (obj[current] == undefined) { // jshint ignore:line
+            return false;
+        }
+    }
+    return true;
+}
 
 var unique = 0;
 function next() {
@@ -79,7 +89,10 @@ function assign(destination) {
 }
 
 function provider(name, provider_) {
-    return typeof provider_ === 'object' ? valueFn(provider_) : provider_;
+    if (Array.isArray(provider_) || typeof provider_ === 'function') {
+        return provider_;
+    }
+    return valueFn(provider_);
 }
 
 function unique(array) {

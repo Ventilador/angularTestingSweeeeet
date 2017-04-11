@@ -99,12 +99,24 @@ function newModuleInternal(requires, name) {
     instance.name = name;
     instance.$$all = all;
     instance.transverseAll = transverseAll;
-    instance._moduleConfig = configArray;
-    instance._moduleRun = runArray;
+    instance.doConfig = suportQueue(configArray);
+    instance.doRun = suportQueue(runArray);
+    instance.runArray = runArray;
+    instance.configArray = configArray;
     return instance;
     function setAll(name, value) {
         all[name + 'Provider'] = value;
         return instance;
+    }
+
+    function suportQueue(array) {
+        return function (id, fn) {
+            array.push({
+                id: id,
+                fn: fn
+            });
+            return instance;
+        };
     }
 
     function returnInstance() {
@@ -134,8 +146,8 @@ function newModuleInternal(requires, name) {
                 key = angular.module(key);
                 visited[key] = true;
                 Object.assign(toReturn.$$all, key.$$all);
-                toReturn.run = toReturn.run.concat(key._moduleRun);
-                toReturn.config = toReturn.config.concat(key._moduleConfig);
+                toReturn.run = toReturn.run.concat(key.runArray);
+                toReturn.config = toReturn.config.concat(key.configArray);
                 return key.requires;
             }
             return [];

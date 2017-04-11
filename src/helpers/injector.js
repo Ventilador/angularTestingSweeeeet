@@ -2,20 +2,25 @@ var hasProp = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
 var pushedDirectives = {};
 var moduleConfig;
 var overritenCache;
+var providerRegex = /^(.+)Provider$/;
 var requiresKey = '$$requires';
 var providerPrefix = 'Provider';
 var INSTANTIATING = function () { };
 var hasMethods = require('./utils').hasMethods;
 var setKeys = require('./utils').setKeys;
 var CONSTANTS = require('./constants');
+var visited = {};
 module.exports = createInjector;
-
+createInjector.cleanMap = function () {
+    visited = {};
+};
 function createInjector(angularModule, requires, force, angularInjector, emitError, originalMethods) {
     var cache = {};
     var overritenCache = {};
     var providers = {};
     var locals = {};
     var $$all = {};
+    var injectorProvider = originalMethods.get('injectorLeaker');
     Object.assign(angularInjector, {
         annotate: originalMethods.annotate,
         addLocals: internalAddLocals,
@@ -31,8 +36,8 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         $$all = moduleConfig.$$all;
     } else {
         moduleConfig = {
-            run: angularModule._moduleRun.slice(),
-            config: angularModule._moduleConfig.slice()
+            run: angularModule.runArray.slice(),
+            config: angularModule.configArray.slice()
         };
         $$all = angularModule.$$all;
     }
@@ -54,7 +59,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
                 instantiate: internalInstantiate,
                 invoke: internalInvoke
             });
-            loopAndCall(moduleConfig.config, instanciateProvider);
+            loopAndCall(moduleConfig.config, runConfig);
             loopAndCall(moduleConfig.run, internalInvoke);
             return method.apply(instance, arguments);
         };
@@ -64,6 +69,15 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         for (var index = 0, current = array[0]; index < array.length; current = array[++index]) {
             method(current);
         }
+    }
+
+    function runConfig(item) {
+        if (item.id && visited[item.id]) {
+            return;
+        }
+        visited[item.id] = 1;
+        var args = injectArgs(item.fn, [], null, instanciateProvider);
+        item.fn.apply(null, args);
     }
 
 
@@ -92,15 +106,14 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         } else if (hasProp(locals, name)) {
             return (cache[name] = locals[name]);
         }
-        var provName = name + providerPrefix;
         cache[name] = INSTANTIATING;
-        if (hasProp($$all, provName)) {
+        if (hasProp($$all, name)) {
             var found;
-            if (!providers[provName]) {
-                providers[provName] = instanciateProvider(provName, $$all[provName]);
+            if (!providers[name]) {
+                providers[name] = instanciateProvider(name, $$all[name]);
             }
-            if (providers[provName]) {
-                cache[name] = internalInvoke(providers[provName].$get, providers[provName]);
+            if (providers[name]) {
+                cache[name] = internalInvoke(providers[name].$get, providers[name]);
             }
         } else if (/^[^n][^g].+Directive$/.test(name)) {
             return (cache[name] = []);
@@ -122,7 +135,13 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             }
             return providers[name];
         }
-        var provider;
+        var provider, result;
+        if (injectorProvider.has(name)) {
+            return injectorProvider.get(name);
+        } else if ((result = providerRegex.exec(name)) && injectorProvider.has(result[1])) {
+            return injectorProvider.get(result[1]);
+        }
+
         providers[name] = INSTANTIATING;
         if (hasProp(locals, name)) {
             provider = locals[name];
@@ -130,12 +149,13 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             provider = $$all[name];
         } else {
             emitError('Provider not registered', instanciateProvider, [name]);
-            return null;
+            return providers[name] = null;
         }
         var instance = Object.create((Array.isArray(provider) ? provider[provider.length - 1] : provider).prototype || null);
         var requires = [];
         var args = injectArgs(provider, requires, null, instanciateProvider);
-        args.shift(null);
+        provider = Array.isArray(provider) ? provider[provider.length - 1] : provider;
+        args.unshift(null);
         var toReturn = new (Function.prototype.bind.apply(provider, args))();
         toReturn[requiresKey] = requires;
         return (providers[name] = toReturn);

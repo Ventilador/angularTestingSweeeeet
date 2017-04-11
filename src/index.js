@@ -8,6 +8,7 @@ var ngModelDirective = require('./helpers/configurations/ngModel');
 var controllerServiceDecorator = require('./helpers/configurations/controllerService');
 var rootScopeDecorator = require('./helpers/configurations/rootScope');
 var ngModelController = require('./helpers/configurations/ngModelController');
+var injectorLeaker = require('./helpers/configurations/injectoLeaker');
 var suiteProvider = require('./suiteProvider');
 module.exports = (function (context) {
     var diretivesPushed = {};
@@ -20,6 +21,7 @@ module.exports = (function (context) {
                 }
             };
         }])
+        .provider('injectorLeaker', injectorLeaker)
         .decorator('$controller', controllerServiceDecorator)
         .decorator('$rootScope', rootScopeDecorator)
         .decorator('ngModelDirective', ngModelController)

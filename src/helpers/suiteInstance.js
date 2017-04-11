@@ -11,24 +11,34 @@ var utils = require('./utils'),
     forEachKey = utils.forEachKey,
     valueFn = utils.valueFn,
     createMethod = utils.createMethod,
+    assertDefinedNotNull = utils.assertDefinedNotNull,
     supportObject = utils.supportObject;
 module.exports = suite;
 var toClean = [];
+var isJquery = Function.prototype.bind.call(Object.prototype.isPrototypeOf, angular.element.prototype);
 function suite($injector, onError) {
     clean();
     var compiledDirective = {};
+    var options = {};
     var suiteInstance = {
         service: support,
         factory: support,
         filter: supportObject(addLocals, base, 'Filter'),
-        bindFrom: bindFrom,
         diretives: directives,
         removeDirectives: removeDirectives,
+        bindToController: supportOption('bindToController'),
+        bindFrom: supportOption('bindFrom'),
+        controller: supportOption('controller'),
+        controllerAs: supportOption('controllerAs'),
+        template: supportOption('template', angular.element),
+        get: get,
         compile: compile
     };
-    var options;
-    var parent;
     return suiteInstance;
+
+    function get(name) {
+        return $injector.get(name);
+    }
 
     function support(name, instance, callback, spyCreator) {
         var factoryInstance;
@@ -47,6 +57,13 @@ function suite($injector, onError) {
             callback(factoryInstance);
         }
         return addLocals(name, factoryInstance);
+    }
+
+    function supportOption(optionKey, factory) {
+        return function (newValue) {
+            options[optionKey] = factory ? factory(newValue) : newValue;
+            return suiteInstance;
+        };
     }
 
     function ensureResult(factory) {
@@ -96,11 +113,6 @@ function suite($injector, onError) {
         }
     }
 
-    function bindFrom(newParent) {
-        parent = newParent;
-        return suiteInstance;
-    }
-
 
     function saveDirectiveInstance(dirObj) {
         if (dirObj.instance) {
@@ -115,32 +127,38 @@ function suite($injector, onError) {
         var $compile = $injector.get('$compile');
         var $rootScope = $injector.get('$rootScope');
         var controllersList = $controller.$$intercepted();
-        var toCompile = directive;
-        var controllerToFectch;
+        options.template = directive || options.template;
         var found;
-        var name;
+        var parentScope = Object.assign($rootScope.$new(true), options.bindFrom || {});
         var compiled;
-        var parentScope = Object.assign($rootScope.$new(true), parent);
-        var childScope;
-        if (typeof directive === 'string') {
-            if (!$injector.has(directive + 'Directive')) {
-                onError('Directive "' + directive + '" not found', compile, arguments);
+        if (typeof options.template === 'string') {
+            if (!$injector.has(options.template + 'Directive')) {
+                onError('Directive "' + options.template + '" not found', compile, arguments);
                 return null;
             }
-            var info = buildHTML($injector.get(directive + 'Directive')[0], directive, attrs, parentScope);
-            controllerToFectch = info.controller;
-            toCompile = info.html;
+            var info = buildHTML($injector.get(options.template + 'Directive')[0], options.template, attrs, parentScope);
+            options.controller = info.controller;
+            options.template = info.html;
+            compiled = $compile(options.template)(parentScope);
+        } else if (isJquery(options.template) && assertDefinedNotNull(options, 'controller')) {
+            var locals = {
+                $scope: parentScope.$new(true),
+                $attr: {}
+            };
+            attrs = Object.assign({}, options.bindToController, attrs);
+            var laterFn = $controller(options.controller, locals, true, options.controllerAs, attrs, parentScope);
+            locals.$element = compiled = $compile(angular.element('<form/>').append(options.template))(parentScope);
+            laterFn();
         }
-        compiled = $compile(toCompile)(parentScope);
         return {
-            compiledFrom: valueFn(toCompile),
+            compiledFrom: valueFn(options.template),
             getParentScope: valueFn(parentScope),
+            getHtml: valueFn(compiled),
             getController: propertyGetter('instance'),
             getDirective: getDirective,
             getChildScope: propertyGetter('$scope'),
             getElement: propertyGetter('$element'),
             getAttrs: propertyGetter('$attrs'),
-            getHtml: getHtml,
             $apply: callRoot('$apply'),
             $applyAsync: callRoot('$applyAsync'),
             $eval: callRoot('$eval'),
@@ -163,13 +181,13 @@ function suite($injector, onError) {
 
         function findByName(name) {
             if (!arguments.length) {
-                return found || findByName(controllerToFectch);
+                return found || findByName(options.controller);
             } else if (!name) {
                 return;
             }
             name = getKey(name);
             for (var i = 0, value = controllersList[i]; i < controllersList.length; value = controllersList[++i]) {
-                if (value.name === getKey(name)) {
+                if (value.name === name) {
                     return value;
                 }
             }
@@ -180,9 +198,6 @@ function suite($injector, onError) {
             return compiledDirective[name];
         }
 
-        function getHtml() {
-            return compiled;
-        }
     }
 
 
