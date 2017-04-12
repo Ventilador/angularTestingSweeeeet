@@ -77,7 +77,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         }
         visited[item.id] = 1;
         var args = injectArgs(item.fn, [], null, instanciateProvider);
-        item.fn.apply(null, args);
+        (Array.isArray(item.fn) ? item.fn[item.fn.length - 1] : item.fn).apply(null, args);
     }
 
 
@@ -107,13 +107,14 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             return (cache[name] = locals[name]);
         }
         cache[name] = INSTANTIATING;
-        if (hasProp($$all, name)) {
+        var providerName = name + providerPrefix;
+        if (hasProp($$all, providerName)) {
             var found;
-            if (!providers[name]) {
-                providers[name] = instanciateProvider(name, $$all[name]);
+            if (!providers[providerName]) {
+                providers[providerName] = instanciateProvider(providerName, $$all[providerName]);
             }
-            if (providers[name]) {
-                cache[name] = internalInvoke(providers[name].$get, providers[name]);
+            if (providers[providerName]) {
+                cache[name] = internalInvoke(providers[providerName].$get, providers[providerName]);
             }
         } else if (/^[^n][^g].+Directive$/.test(name)) {
             return (cache[name] = []);

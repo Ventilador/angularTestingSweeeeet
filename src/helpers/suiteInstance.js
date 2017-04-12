@@ -32,12 +32,17 @@ function suite($injector, onError) {
         controllerAs: supportOption('controllerAs'),
         template: supportOption('template', angular.element),
         get: get,
+        invoke: invoke,
         compile: compile
     };
     return suiteInstance;
 
     function get(name) {
         return $injector.get(name);
+    }
+
+    function invoke() {
+        return $injector.invoke.apply($injector, arguments);
     }
 
     function support(name, instance, callback, spyCreator) {

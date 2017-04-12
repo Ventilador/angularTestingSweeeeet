@@ -111,6 +111,10 @@ function newModuleInternal(requires, name) {
 
     function suportQueue(array) {
         return function (id, fn) {
+            if (arguments.length === 1) {
+                fn = id;
+                id = null;
+            }
             array.push({
                 id: id,
                 fn: fn
