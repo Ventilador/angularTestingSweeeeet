@@ -48,7 +48,7 @@ function createSuiteProvider(injector, config) {
                 instanceModules.forEach(pushTo(actualDependencies));
             }
             return suiteCreator(
-                (internalInjector = createInjector(angular.module(moduleName), actualDependencies, force, injector, emitError, copiedInjector)),
+                (internalInjector = createInjector(angular.sweetModule(moduleName), actualDependencies, force, injector, emitError, copiedInjector)),
                 emitError
             );
         }
@@ -91,7 +91,7 @@ function pushTo(array) {
         }
     }
     return function (name) {
-        if (!removeModules[name] && angular.module.has(name) && array.indexOf(name) === -1) {
+        if (!removeModules[name] && angular.sweetModule.has(name) && array.indexOf(name) === -1) {
             array.push(name);
         }
     };

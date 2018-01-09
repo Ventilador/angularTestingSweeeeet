@@ -24,12 +24,21 @@ function init() {
         throw 'Please initialize ' + CONSTANTS.MODULE_NAME + ' only once, sorry :(';
     }
     isInit = true;
-    angular.module = createAngularObject(angular.module(CONSTANTS.MODULE_NAME));
+    const origMod = angular.module;
+    const known = Object.create(null);
+    angular.module = function (name) {
+        const module = origMod.apply(null, arguments);
+        if (!known[name]) {
+            known[name] = module;
+        }
+        return module;
+    }
+    angular.sweetModule = createAngularObject(angular.module(CONSTANTS.MODULE_NAME), known);
     extendJquery(angular.element);
 }
 
 
-function createAngularObject(originalModule) {
+function createAngularObject(originalModule, knownModules) {
     var modules = {};
     modules[CONSTANTS.MODULE_NAME] = originalModule;
     newModule.has = function (name) {
@@ -44,9 +53,14 @@ function createAngularObject(originalModule) {
                 throw 'Please don\'t override hasOwnProperty method';
             }
             modules[name] = newModuleInternal(requires, name);
+
         }
         if (!modules[name]) {
-            throw 'Module "' + name + '" not found';
+            if (knownModules[name]) {
+                modules[name] = generateFrom(knownModules[name]);
+            } else {
+                throw 'Module "' + name + '" not found';
+            }
         }
         return modules[name];
     }
@@ -59,6 +73,14 @@ var internalProto = {
 };
 function returnNoop() {
     return angular.noop;
+}
+
+function generateFrom(module) {
+    const mod = newModuleInternal(module.requires, module.name);
+    module._invokeQueue.forEach(function (item) {
+        mod[item[1]].apply(mod, item[2]);
+    });
+    return mod;
 }
 
 function newModuleInternal(requires, name) {
@@ -146,8 +168,8 @@ function newModuleInternal(requires, name) {
         }
         return toReturn;
         function merge(key) {
-            if (!visited[key] && angular.module.has(key)) {
-                key = angular.module(key);
+            if (!visited[key] && angular.sweetModule.has(key)) {
+                key = angular.sweetModule(key);
                 visited[key] = true;
                 Object.assign(toReturn.$$all, key.$$all);
                 toReturn.run = toReturn.run.concat(key.runArray);
