@@ -24,7 +24,7 @@ function suite($injector, onError) {
         service: support,
         factory: support,
         filter: supportObject(addLocals, base, 'Filter'),
-        diretives: directives,
+        directives: directives,
         removeDirectives: removeDirectives,
         bindToController: supportOption('bindToController'),
         bindFrom: supportOption('bindFrom'),
@@ -90,7 +90,7 @@ function suite($injector, onError) {
         } else {
             toClean.push({
                 name: name,
-                fn: $injector.$$overrideCache(name, saveDirectiveInstance(createDirective(factory, name)))
+                fn: $injector.$$overrideCache(name + 'Directive', [saveDirectiveInstance(createDirective(factory, name))])
             });
         }
         return suiteInstance;

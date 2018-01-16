@@ -24,7 +24,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
     Object.assign(angularInjector, {
         annotate: originalMethods.annotate,
         addLocals: internalAddLocals,
-        $$overideCache: $$overideCache,
+        $$overrideCache: $$overideCache,
         get: initDelegate(internalGet, 'get'),
         has: initDelegate(internalHas, 'has'),
         instantiate: initDelegate(internalInstantiate, 'instantiate'),
@@ -128,13 +128,16 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
 
     }
 
-    function instanciateProvider(name) {
+    function instanciateProvider(name, fn) {
         if (hasProp(providers, name)) {
             if (providers[name] === INSTANTIATING) {
                 emitError('Circular dependency in ' + name, instanciateProvider, [name]);
                 return;
             }
             return providers[name];
+        }
+        if(fn){
+            return providers[name] = injectorProvider.invoke(fn);
         }
         var provider, result;
         if (injectorProvider.has(name)) {

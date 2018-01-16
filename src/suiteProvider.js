@@ -48,7 +48,7 @@ function createSuiteProvider(injector, config) {
                 instanceModules.forEach(pushTo(actualDependencies));
             }
             return suiteCreator(
-                (internalInjector = createInjector(angular.sweetModule(moduleName), actualDependencies, force, injector, emitError, copiedInjector)),
+                createInjector(angular.sweetModule(moduleName), actualDependencies, force, injector, emitError, copiedInjector),
                 emitError
             );
         }
