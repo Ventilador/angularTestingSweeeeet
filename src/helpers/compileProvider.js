@@ -115,7 +115,7 @@ function buildHTML(directiveToCompile, name, attrs, parent) {
             }
         }
         attrsToCreate.push({
-            attrName: casedKey,
+            attrName: value,
             attrValue: value
         });
     });

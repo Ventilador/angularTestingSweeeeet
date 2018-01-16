@@ -78,7 +78,11 @@ function returnNoop() {
 function generateFrom(module) {
     const mod = newModuleInternal(module.requires, module.name);
     module._invokeQueue.forEach(function (item) {
-        mod[item[1]].apply(mod, item[2]);
+        if (item[0] === '$controllerProvider' && item[1] === 'register') {
+            mod['controller'].apply(mod, item[2]);
+        } else {
+            mod[item[1]].apply(mod, item[2]);
+        }
     });
     return mod;
 }
@@ -108,7 +112,7 @@ function newModuleInternal(requires, name) {
     instance.provider = supportObject(setAll, provider);
     instance.factory = supportObject(setAll, factory);
     instance.value = supportObject(returnInstance, angular.noop);
-    instance.constant = supportObject(returnInstance, angular.noop);
+    instance.constant = constant;
     instance.filter = supportObject(setAll, base, 'Filter');
     instance.decorator = supportObject(returnInstance, angular.noop);
     instance.animation = supportObject(returnInstance, angular.noop);
@@ -128,6 +132,11 @@ function newModuleInternal(requires, name) {
     return instance;
     function setAll(name, value) {
         all[name + 'Provider'] = value;
+        return instance;
+    }
+
+    function constant(name, value) {
+        all[name + 'Provider'] = valueFn({ $get: valueFn(value) });
         return instance;
     }
 

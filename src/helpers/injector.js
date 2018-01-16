@@ -89,10 +89,10 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         while (length--) {
             key = toDelete[length];
             toDelete.length--;
-            if (cache[key]) {
+            if (cache[key] && cache[key][requiresKey]) {
                 length = (toDelete = cache[key][requiresKey].concat(toDelete)).length;
-                delete cache[key];
             }
+            delete cache[key];
         }
         locals[name] = constructor;
     }
@@ -136,7 +136,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             }
             return providers[name];
         }
-        if(fn){
+        if (fn) {
             return providers[name] = injectorProvider.invoke(fn);
         }
         var provider, result;
