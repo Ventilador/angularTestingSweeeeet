@@ -32,6 +32,14 @@ module.exports = (function (context) {
         .run(compileRun)
         .directive('ngModel', ngModelDirective);
     init();
-    context.angularTestingSuite = suiteProvider(angular.bootstrap('', [require('./helpers/constants').MODULE_NAME, 'pascalprecht.translate'], { strictDi: false }));
+    let injector;
+    context.angularTestingSuite = suiteProvider(injector = angular.bootstrap('', [require('./helpers/constants').MODULE_NAME, 'pascalprecht.translate'], { strictDi: false }));
+    context.angularTestingSuite.annotate = function (fn) {
+        const args = injector.annotate(fn);
+        fn = typeof fn === 'function' ? fn : (Array.isArray(fn) && typeof fn[fn.length - 1] === 'function' ? fn[fn.length - 1] : null);
+        fn.$inject = args;
+        return fn;
+    };
     return context.angularTestingSuite;
-})(typeof self !== 'undefined' ? self : window); 
+})(typeof self !== 'undefined' ? self : window);
+

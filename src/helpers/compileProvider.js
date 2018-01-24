@@ -16,7 +16,7 @@ var bindingTypes = {
     '>': require('./bindingDirectives/oneWay'),
     '@': require('./bindingDirectives/attribute')
 };
-var regex = /(=|&|>|@)(\?)?(.*)/;
+var regex = /(=|&|>|@)(?:\?)?(.*)/;
 var REQUIRE_PREFIX_REGEXP = /^(?:(\^\^?)?(\^\^?)?)?/;
 var toClean = [];
 var compiled;
@@ -99,31 +99,42 @@ function buildHTML(directiveToCompile, name, attrs, parent) {
     var attrsToCreate = [];
     var nameAdded;
     forEachKey(bindings, function (key, value) {
-        if (key === name) {
-            nameAdded = true;
-        }
-        var casedKey = snake_case(key);
         var result = regex.exec(value || '');
+        var attrName, attrValue;
         if (result) {
-            value = result[3] || key;
+            attrName = result[2] || key;
             switch (result[1]) {
+                case '&':
+                    var val = parent[attrName];
+                    if (isAnnotated(val)) {
+                        attrValue = stringiFyAnnotatedFunction(val, attrName);
+                    } else {
+                        attrValue = attrName;
+                    }
+                    break;
                 case '@':
-                    value = parent[value];
+                    attrValue = parent[value];
                     break;
                 default:
+                    attrValue = value;
                     break;
             }
         }
         attrsToCreate.push({
-            attrName: value,
-            attrValue: value
+            attrName: snake_case(attrName),
+            attrValue: attrValue
         });
     });
 
     if (nameAdded) {
         name = 'div';
-    } else {
+    } else if (getDirectiveRestrict(directiveToCompile.restrict, directiveToCompile.name).indexOf('E') !== -1) {
         name = snake_case(name);
+    } else {
+        attrsToCreate.push({
+            attrName: snake_case(name)
+        });
+        name = 'div';
     }
 
     return {
@@ -138,7 +149,26 @@ function buildHTML(directiveToCompile, name, attrs, parent) {
     };
 }
 
-function decorateNgModelController() {
+function stringiFyAnnotatedFunction(fn, name) {
+    return name + '(' + (fn.$inject || fn.slice(0, -1)).join(',') + ')';
+}
 
+function isAnnotated(fn) {
+    if (!fn) {
+        return false;
+    }
+    if (Array.isArray(fn)) {
+        if (typeof fn[fn.length - 1] === 'function') {
+            let length = fn.length - 1;
+            while (length--) {
+                if (typeof fn[length] !== 'string') {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+    return typeof fn === 'function' && !!fn.$inject;
 }
 

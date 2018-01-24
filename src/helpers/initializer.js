@@ -42,7 +42,7 @@ function createAngularObject(originalModule, knownModules) {
     var modules = {};
     modules[CONSTANTS.MODULE_NAME] = originalModule;
     newModule.has = function (name) {
-        return name in modules;
+        return (name in modules) || (name in knownModules);
     };
     return newModule;
     function newModule(name, requires) {
@@ -80,6 +80,8 @@ function generateFrom(module) {
     module._invokeQueue.forEach(function (item) {
         if (item[0] === '$controllerProvider' && item[1] === 'register') {
             mod['controller'].apply(mod, item[2]);
+        } else if (item[0] === '$filterProvider' && item[1] === 'register') {
+            mod['filter'].apply(mod, item[2]);
         } else {
             mod[item[1]].apply(mod, item[2]);
         }
@@ -136,7 +138,10 @@ function newModuleInternal(requires, name) {
     }
 
     function constant(name, value) {
-        all[name + 'Provider'] = valueFn({ $get: valueFn(value) });
+        all[name + 'Constant'] = value;
+        setAll(name, valueFn({
+            $get: valueFn(value)
+        }));
         return instance;
     }
 

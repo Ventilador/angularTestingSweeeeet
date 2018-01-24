@@ -8,6 +8,7 @@ var providerPrefix = 'Provider';
 var INSTANTIATING = function () { };
 var hasMethods = require('./utils').hasMethods;
 var setKeys = require('./utils').setKeys;
+var valueFn = require('./utils').valueFn;
 var CONSTANTS = require('./constants');
 var visited = {};
 module.exports = createInjector;
@@ -17,9 +18,11 @@ createInjector.cleanMap = function () {
 function createInjector(angularModule, requires, force, angularInjector, emitError, originalMethods) {
     var cache = {};
     var overritenCache = {};
-    var providers = {};
-    var locals = {};
     var $$all = {};
+    var providers = {
+        $provide: make$provide($$all, cache)
+    };
+    var locals = {};
     var injectorProvider = originalMethods.get('injectorLeaker');
     Object.assign(angularInjector, {
         annotate: originalMethods.annotate,
@@ -33,13 +36,13 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
     var instance = angularInjector;
     if (Array.isArray(requires) || force === true) {
         moduleConfig = angularModule.transverseAll(requires, force);
-        $$all = moduleConfig.$$all;
+        Object.assign($$all, moduleConfig.$$all);
     } else {
         moduleConfig = {
             run: angularModule.runArray.slice(),
             config: angularModule.configArray.slice()
         };
-        $$all = angularModule.$$all;
+        Object.assign($$all, moduleConfig.$$all);
     }
     cache.$injector = instance;
     return instance;
@@ -108,8 +111,7 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
         }
         cache[name] = INSTANTIATING;
         var providerName = name + providerPrefix;
-        if (hasProp($$all, providerName)) {
-            var found;
+        if (hasProp($$all, providerName) || hasProp(providers, providerName)) {
             if (!providers[providerName]) {
                 providers[providerName] = instanciateProvider(providerName, $$all[providerName]);
             }
@@ -136,21 +138,23 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
             }
             return providers[name];
         }
-        if (fn) {
-            return providers[name] = injectorProvider.invoke(fn);
-        }
+        // if (fn) {
+        //     return providers[name] = injectorProvider.invoke(fn);
+        // }
         var provider, result;
-        if (injectorProvider.has(name)) {
+
+        if (hasProp(locals, name)) {
+            provider = locals[name];
+            providers[name] = INSTANTIATING;
+        } else if (hasProp($$all, name)) {
+            provider = $$all[name];
+            providers[name] = INSTANTIATING;
+        } else if (hasProp($$all, name + 'Constant')) {
+            return cache[name] = providers[name] = $$all[name + 'Constant'];
+        } else if (injectorProvider.has(name)) {
             return injectorProvider.get(name);
         } else if ((result = providerRegex.exec(name)) && injectorProvider.has(result[1])) {
             return injectorProvider.get(result[1]);
-        }
-
-        providers[name] = INSTANTIATING;
-        if (hasProp(locals, name)) {
-            provider = locals[name];
-        } else if (hasProp($$all, name)) {
-            provider = $$all[name];
         } else {
             emitError('Provider not registered', instanciateProvider, [name]);
             return providers[name] = null;
@@ -221,7 +225,26 @@ function createInjector(angularModule, requires, force, angularInjector, emitErr
     }
 }
 
-
+function make$provide(providers, cache) {
+    return {
+        constant: function (name, val) {
+            providers[name + 'Constant'] = providers[name] = cache[name] = val;
+        },
+        service: function (name, factory) {
+            providers[name + providerPrefix] = valueFn({
+                $get: factory
+            });
+        },
+        factory: function (name, factory) {
+            providers[name + providerPrefix] = valueFn({
+                $get: factory
+            });
+        },
+        provider: function (name, factory) {
+            providers[name + providerPrefix] = factory;
+        }
+    }
+}
 
 
 function isClass(func) {
